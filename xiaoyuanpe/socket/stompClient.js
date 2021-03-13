@@ -1,19 +1,25 @@
 import SockJS from 'sockjs-client';
 import Stomp from 'stompjs';
+const Base64 = require('js-base64').Base64;
 
 let baseUrl = "http://localhost:8080/socket";
 export class stompClient {
-  constructor() {
-
-  }
-
-  subscribe(url, callback) {
+  subscribe(url, callback, failcallback = null) {
     let socket = new SockJS(baseUrl);
     let stompClient = Stomp.over(socket);
+    stompClient.debug = null;
     stompClient.connect({}, frame => {
-      console.log('Connected: ' + frame);
       stompClient.subscribe(url, val => {
-        callback(val);
+        let res = JSON.parse(val.body);
+        if (res.code === 200) {
+          let decode = Base64.decode(res.data);
+          let data = JSON.parse(decode);
+          callback(data);
+        } else {
+          if (failcallback) {
+            failcallback(res.msg);
+          }
+        }
       });
     });
   }

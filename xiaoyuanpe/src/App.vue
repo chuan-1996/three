@@ -28,14 +28,10 @@
     },
     mounted() {
       let client = new stompClient().subscribe('/topic/price', val => {
-        console.log(val);
-        console.log(JSON.parse(val.body));
-        this.list1 = JSON.parse(val.body);
+        this.list1 = val;
       });
       let client2 = new stompClient().subscribe('/topic/price-fast', val => {
-        console.log(val);
-        console.log(JSON.parse(val.body));
-        this.list2 = JSON.parse(val.body);
+        this.list2 = val;
       });
     },
   }
