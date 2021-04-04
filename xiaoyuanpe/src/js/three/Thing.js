@@ -15,6 +15,7 @@ class Thing extends THREE.Object3D{
   }
 
   pick() {
+    console.log(this)
     return this.info
   }
 

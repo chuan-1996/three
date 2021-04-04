@@ -3,6 +3,7 @@ import { MapControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
 import { DDSLoader } from 'three/examples/jsm/loaders/DDSLoader.js';
+import { ColladaLoader } from 'three/examples/jsm/loaders/ColladaLoader.js';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { Thing, ThingType } from "./Thing";
 import { eventBus } from "../bus";
@@ -41,6 +42,7 @@ export class scene {
     function render() {
       scope.renderer.render(scope.scene, scope.camera);
     }
+
     window.scene = this;
     animate();
   }
@@ -58,7 +60,7 @@ export class scene {
 
   initCamera() {
     let camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
-    camera.position.set(400, 200, 0);
+    camera.position.set(200, 200, 200);
     this.camera = camera;
   }
 
@@ -147,12 +149,15 @@ export class scene {
 
   loadMtlAndObj(mtlPath, objPath) {
     return new Promise(resolve => {
+      let path = "/static/obj";
       const onProgress = function (xhr) {
         if (xhr.lengthComputable) {
-          const percentComplete = xhr.loaded / xhr.total * 100;
-          let name = objPath.split("/");
-          name = name[name.length - 1];
-          console.log(name + " " + Math.round(percentComplete, 2) + '% downloaded');
+          if (xhr.loaded === xhr.total) {
+            const percentComplete = xhr.loaded / xhr.total * 100;
+            let name = objPath.split("/");
+            name = name[name.length - 1];
+            console.log(name + " " + Math.round(percentComplete, 2) + '% downloaded');
+          }
         }
       };
 
@@ -160,12 +165,12 @@ export class scene {
       manager.addHandler(/\.dds$/i, new DDSLoader());
 
       let mtlLoader = new MTLLoader(manager);
-      mtlLoader.load(mtlPath, function (materials) {
+      mtlLoader.load(path + mtlPath, materials => {
         materials.preload();
 
         let objLoader = new OBJLoader(manager);
         objLoader.setMaterials(materials);
-        objLoader.load('/static/obj/male02/male02.obj', (object) => {
+        objLoader.load(path + objPath, (object) => {
           object.castShadow = true;
           object.receiveShadow = true;
           resolve(object);
@@ -175,20 +180,40 @@ export class scene {
     })
   }
 
+  loadCollada(daePath) {
+    return new Promise(resolve => {
+      let path = "/static/obj";
+      let loader = new ColladaLoader();
+      loader.load(path + daePath, result => {
+        let mesh = result.scene;
+        resolve(mesh)
+      });
+    })
+  }
+
   initModel() {
     // 草地
     this.initGround();
     // 500个盒子
-    this.initBox();
+    //this.initBox();
     // 人
-    this.loadMtlAndObj('/static/obj/male02/male02_dds.mtl', '/static/obj/male02/male02.obj').then((object) => {
-      object.position.y = 1;
-      object.scale.x = 0.5;
-      object.scale.y = 0.5;
-      object.scale.z = 0.5;
+    this.loadMtlAndObj('/male02/male02_dds.mtl', '/male02/male02.obj').then((object) => {
       let info = {type: ThingType.BUILDING, name: "a man"};
       let man = new Thing(object, info);
+      man.position.y = 0.1;
+      man.scale.set(0.1, 0.1, 0.1);
+      man.rotation.y = Math.PI;
       this.addThing(man);
+    });
+    // 房子
+    this.loadMtlAndObj('/building/file.mtl', '/building/file.obj').then((object) => {
+      let info = {type: ThingType.VENUE, name: "house"};
+      let school = new Thing(object, info);
+      school.scale.set(0.005, 0.005, 0.005);
+      school.position.x = -80;
+      school.position.y = 0.1;
+      school.position.z = -160;
+      this.addThing(school);
     });
   }
 
