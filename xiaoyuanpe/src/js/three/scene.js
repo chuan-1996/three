@@ -4,32 +4,10 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
 import { DDSLoader } from 'three/examples/jsm/loaders/DDSLoader.js';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
-import { Thing } from "./Thing";
+import { Thing, ThingType } from "./Thing";
+import { eventBus } from "../bus";
 
-class SceneConstructor {
-  constructor() {
-    this.sceneMap = new Map();
-  }
-
-  createScene(canvasId) {
-    let canvas = document.getElementById("canvas");
-    this.sceneMap.set(canvasId, new scene(canvas));
-  }
-
-  getScene(canvasId) {
-    return this.sceneMap.get(canvasId);
-  }
-
-  dispose() {
-    this.sceneMap.clear();
-  }
-}
-
-const sceneConstructor = new SceneConstructor();
-window.map = sceneConstructor.sceneMap;
-export { sceneConstructor }
-
-class scene {
+export class scene {
   constructor(canvas) {
     this.scene = null;
     this.camera = null;
@@ -48,12 +26,12 @@ class scene {
     this.initLight();
     this.initStats();
     this.initControls();
-    this.initModel();
     this.registryEventListener();
+    this.initModel();
 
     let scope = this;
 
-    function animate() {
+    const animate = function () {
       requestAnimationFrame(animate);
       scope.stats.update();
       scope.controls.update();
@@ -63,14 +41,18 @@ class scene {
     function render() {
       scope.renderer.render(scope.scene, scope.camera);
     }
-
+    window.scene = this;
     animate();
+  }
+
+  render() {
+    this.renderer.render(this.scene, this.camera);
   }
 
   initScene() {
     let scene = new THREE.Scene();
     scene.background = new THREE.Color(0xcce0ff);
-    scene.fog = new THREE.Fog(0xcce0ff, 800, 1000);
+    scene.fog = new THREE.Fog(0xcce0ff, 800, 2000);
     this.scene = scene;
   }
 
@@ -125,8 +107,9 @@ class scene {
     controls.screenSpacePanning = false;
 
     controls.minDistance = 100;
-    controls.maxDistance = 500;
-    controls.maxPolarAngle = Math.PI / 2;
+    controls.maxDistance = 400;
+    controls.minPolarAngle = Math.PI / 6;
+    controls.maxPolarAngle = Math.PI / 3;
     this.controls = controls;
   }
 
@@ -141,7 +124,7 @@ class scene {
       }
     });
 
-    document.addEventListener('click', (event) => {
+    this.canvas.addEventListener('click', (event) => {
       event.preventDefault();
       let mouse = new THREE.Vector2();
       let raycaster = new THREE.Raycaster();
@@ -152,46 +135,60 @@ class scene {
       raycaster.setFromCamera(mouse, this.camera);
 
       const intersections = raycaster.intersectObjects(this.objList, true);
-
+      let pickInfo = null;
       if (intersections.length > 0) {
         let object = intersections[0].object;
         let thing = Thing.findThing(object);
-        thing.pick();
+        pickInfo = thing.pick();
       }
+      eventBus.emit("pickInfo", pickInfo)
     });
   }
 
+  loadMtlAndObj(mtlPath, objPath) {
+    return new Promise(resolve => {
+      const onProgress = function (xhr) {
+        if (xhr.lengthComputable) {
+          const percentComplete = xhr.loaded / xhr.total * 100;
+          let name = objPath.split("/");
+          name = name[name.length - 1];
+          console.log(name + " " + Math.round(percentComplete, 2) + '% downloaded');
+        }
+      };
+
+      const manager = new THREE.LoadingManager();
+      manager.addHandler(/\.dds$/i, new DDSLoader());
+
+      let mtlLoader = new MTLLoader(manager);
+      mtlLoader.load(mtlPath, function (materials) {
+        materials.preload();
+
+        let objLoader = new OBJLoader(manager);
+        objLoader.setMaterials(materials);
+        objLoader.load('/static/obj/male02/male02.obj', (object) => {
+          object.castShadow = true;
+          object.receiveShadow = true;
+          resolve(object);
+        }, onProgress);
+
+      });
+    })
+  }
 
   initModel() {
+    // 草地
     this.initGround();
+    // 500个盒子
     this.initBox();
-
-    let scope = this;
-    // model
-    const onProgress = function (xhr) {
-      if (xhr.lengthComputable) {
-        const percentComplete = xhr.loaded / xhr.total * 100;
-        console.log(Math.round(percentComplete, 2) + '% downloaded');
-      }
-    };
-
-    const manager = new THREE.LoadingManager();
-    manager.addHandler(/\.dds$/i, new DDSLoader());
-
-    let mtlLoader = new MTLLoader(manager);
-    mtlLoader.load('/static/obj/male02/male02_dds.mtl', function (materials) {
-      materials.preload();
-
-      let objLoader = new OBJLoader(manager);
-      objLoader.setMaterials(materials);
-      objLoader.load('/static/obj/male02/male02.obj', function (object) {
-        object.position.y = 0;
-        object.castShadow = true;
-        object.receiveShadow = true;
-        let man = new Thing(object, "a man");
-        scope.addThing(man);
-      }, onProgress);
-
+    // 人
+    this.loadMtlAndObj('/static/obj/male02/male02_dds.mtl', '/static/obj/male02/male02.obj').then((object) => {
+      object.position.y = 1;
+      object.scale.x = 0.5;
+      object.scale.y = 0.5;
+      object.scale.z = 0.5;
+      let info = {type: ThingType.BUILDING, name: "a man"};
+      let man = new Thing(object, info);
+      this.addThing(man);
     });
   }
 
@@ -213,7 +210,7 @@ class scene {
       mesh.updateMatrix();
       mesh.matrixAutoUpdate = false;
       mesh.info = {abc: "building" + i};
-      let box = new Thing(mesh, "building" + i);
+      let box = new Thing(mesh, {type: ThingType.VENUE, name: "building" + i});
       this.addThing(box);
     }
   }

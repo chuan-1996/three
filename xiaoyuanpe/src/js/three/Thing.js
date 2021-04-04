@@ -1,4 +1,11 @@
 import * as THREE from "three";
+export const ThingType = {
+  VENUE: 0,
+  ACTIVITY: 1,
+  BUILDING: 2,
+  STUDENT: 3,
+  INSTRUMENT: 4
+};
 class Thing extends THREE.Object3D{
   constructor(object, info) {
     super();
@@ -8,7 +15,7 @@ class Thing extends THREE.Object3D{
   }
 
   pick() {
-    console.log(this.info)
+    return this.info
   }
 
   static findThing(obj3d) {
