@@ -25,3 +25,11 @@ export class stompClient {
   }
 }
 
+export function initStomp() {
+  let client = new stompClient().subscribe('/topic/price', val => {
+    this.list1 = val;
+  });
+  let client2 = new stompClient().subscribe('/topic/price-fast', val => {
+    this.list2 = val;
+  });
+}

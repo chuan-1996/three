@@ -1,5 +1,5 @@
 <template>
-  <div id="app">
+  <div>
     <h1>Stock Price</h1>
     <div>
       <ul>
@@ -15,24 +15,17 @@
 </template>
 
 <script>
-
-  import {stompClient} from "../socket/stompClient";
+  import { initStomp } from "../js/socket/stompClient";
 
   export default {
     data() {
       return {
-        message: 'Dynamic Content',
         list1: [],
         list2: []
       }
     },
     mounted() {
-      let client = new stompClient().subscribe('/topic/price', val => {
-        this.list1 = val;
-      });
-      let client2 = new stompClient().subscribe('/topic/price-fast', val => {
-        this.list2 = val;
-      });
+      initStomp();
     },
   }
 </script>
