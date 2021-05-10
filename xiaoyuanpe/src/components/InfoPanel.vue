@@ -72,8 +72,7 @@
             this.tables.push({
               title: info.name,
               content: [
-                [info.name, info.name],
-                [info.name, info.name],
+                ["使用人数", `${info.currentNumber}/${info.maxNumber}`],
               ]
             });
             break;

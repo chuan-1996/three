@@ -7,11 +7,11 @@ export const ThingType = {
   INSTRUMENT: 4
 };
 class Thing extends THREE.Object3D{
-  constructor(object, info) {
+  constructor(object, info = null) {
     super();
-    this.object = object;
+    this.object = object.clone();
     this.info = info;
-    this.add(object);
+    this.add(this.object);
   }
 
   pick() {

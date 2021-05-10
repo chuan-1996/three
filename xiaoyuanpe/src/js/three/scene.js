@@ -67,7 +67,8 @@ export class scene {
   initRenderer() {
     let renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
-      antialias: true
+      antialias: true,
+      logarithmicDepthBuffer: true
     });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
@@ -167,6 +168,8 @@ export class scene {
       let mtlLoader = new MTLLoader(manager);
       mtlLoader.load(path + mtlPath, materials => {
         materials.preload();
+        materials.polygonOffset = true;
+        materials.polygonOffsetFactor = -0.1;
 
         let objLoader = new OBJLoader(manager);
         objLoader.setMaterials(materials);
@@ -182,7 +185,7 @@ export class scene {
 
   loadCollada(daePath) {
     return new Promise(resolve => {
-      let path = "/static/obj";
+      let path = "/static/collada";
       let loader = new ColladaLoader();
       loader.load(path + daePath, result => {
         let mesh = result.scene;
@@ -203,8 +206,9 @@ export class scene {
       man.position.y = 0.1;
       man.scale.set(0.1, 0.1, 0.1);
       man.rotation.y = Math.PI;
-      this.addThing(man);
+      //this.addThing(man);
     });
+
     // 房子
     this.loadMtlAndObj('/building/file.mtl', '/building/file.obj').then((object) => {
       let info = {type: ThingType.VENUE, name: "house"};
@@ -213,7 +217,57 @@ export class scene {
       school.position.x = -80;
       school.position.y = 0.1;
       school.position.z = -160;
+      //this.addThing(school);
+    });
+
+    this.loadCollada('/school/学校.dae').then((object) => {
+      let school = new Thing(object);
+      school.position.x = -380;
+      school.position.y = 0.1;
+      school.position.z = 260;
       this.addThing(school);
+    });
+
+    this.loadCollada('/venue/场馆.dae').then((object) => {
+      let info = {
+        type: ThingType.VENUE,
+        name: `体育馆`
+      };
+      let venue = new Thing(object, info);
+      venue.position.x = -380;
+      venue.position.y = 0.1;
+      venue.position.z = 260;
+      this.addThing(venue);
+    });
+
+    // 4个篮球场
+    this.loadCollada('/bask/篮球场.dae').then((object) => {
+      for(let i = 1; i <= 4; i += 1) {
+        let info = {
+          type: ThingType.INSTRUMENT,
+          name: `篮球场${i}`,
+          currentNumber: 4 * i,
+          maxNumber: 20
+        };
+        let bask = new Thing(object, info);
+        bask.position.x = -380;
+        bask.position.y = 0.1;
+        bask.position.z = 260;
+        switch (i) {
+          case 1:
+            bask.position.x = -400;
+            break;
+          case 2:
+            bask.position.x = -400;
+            bask.position.z = 232;
+            break;
+          case 3:
+            bask.position.z = 232;
+            break;
+        }
+
+        this.addThing(bask);
+      }
     });
   }
 
@@ -249,7 +303,7 @@ export class scene {
     groundTexture.encoding = THREE.sRGBEncoding;
     const groundMaterial = new THREE.MeshLambertMaterial({map: groundTexture});
 
-    let ground = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), groundMaterial);
+    let ground = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), groundMaterial);
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -1;
     ground.receiveShadow = true;
